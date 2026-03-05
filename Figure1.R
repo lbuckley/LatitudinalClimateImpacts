@@ -3,21 +3,37 @@ library(dplyr)
 library(tidyr)
 library(ggplot2)
 library(TrenchR)
+library(patchwork)
 
 #FIG 1a, seasonal temperature variation
 #find stations
-nearest_stations(LAT = 20, LON = -100, distance = 1000)
+nearest_stations(LAT = 7, LON = -71.8, distance = 1500)
+nearest_stations(LAT = 21.4, LON = -101.9, distance = 1500)
+nearest_stations(LAT = -2.7, LON = -59.4, distance = 1500)
 #766250-99999       QUERETARO INTERCONTINENTAL
 #use higher lat? 820980-99999 MACAPA / ALBERTO ALCOLUMBRE
-nearest_stations(LAT = 40, LON = -100, distance = 100)
+#763930-99999                                MONTERREY  N.L. ***USE 25.733 -100.300   515.0
+#768056-99999 GENERAL JUAN N ALVAREZ INTL / ACAPULCO INTL
+#767270-99999                               ZACATEPEC MOR
+#766750-99999                                      TOLUCA  MEX.
+#765710-99999 JESUS TERAN INTL / AGUASCALIENTES INTL 21.705 -102.318  1862.9
+#821110-99999     EDUARDO GOMES INTL  -3.039 -60.050    80.5 
+
+nearest_stations(LAT = 69, LON = -133, distance = 200)
+nearest_stations(LAT = 53.5, LON = -112.1, distance = 100)
+#nearest_stations(LAT = 40, LON = -105.27, distance = 100)
 #724655-93990   HILL CITY MUNICIPAL ARPT
 #lower lat? 711400-99999       BRANDON MUNI 
+#724695-23036       BUCKLEY AIR FORCE BASE
+#719595-99999 TUKTOYAKTUK / JAMES GRUBEN 
+#719570-99999          INUVIK MIKE ZUBKO
+# 711210-99999           EDMONTON/NAMAO(MIL) ***USE 53.667 -113.467   688.0  
 
 #retrieve data
-trop.p <- get_GSOD(years = c(1980:1989), station = "766250-99999")
-temp.p <- get_GSOD(years = c(1980:1989), station = "724655-93990")
-trop.r <- get_GSOD(years = c(2015:2024), station = "766250-99999")
-temp.r <- get_GSOD(years = c(2015:2024), station = "724655-93990")
+trop.p <- get_GSOD(years = c(1982:1984), station = "763930-99999")
+temp.p <- get_GSOD(years = c(1982:1984), station = "711210-99999")
+trop.r <- get_GSOD(years = c(2022:2024), station = "763930-99999")
+temp.r <- get_GSOD(years = c(2022:2024), station = "711210-99999")
 
 #combine
 tdat<- rbind(trop.p[,c("CTRY", "YEAR", "YDAY", "TEMP","MIN","MAX")],
@@ -25,11 +41,13 @@ tdat<- rbind(trop.p[,c("CTRY", "YEAR", "YDAY", "TEMP","MIN","MAX")],
              trop.r[,c("CTRY", "YEAR", "YDAY", "TEMP","MIN","MAX")],
              temp.r[,c("CTRY", "YEAR", "YDAY", "TEMP","MIN","MAX")] )
 
+tdat$loc<- ifelse(tdat$CTRY=="MX", "trop", "temp")
+
 #mean across years
 tmean <- tdat %>%
   filter( YDAY>30 ) %>%
-  mutate(period = ifelse(YEAR <= 2000, "1980_1984", "2020_2024")) %>%
-  group_by(CTRY, period, YDAY) %>%
+  mutate(period = ifelse(YEAR <= 2000, "1982-1984", "2022-2024")) %>%
+  group_by(loc, CTRY, period, YDAY) %>%
   summarise(
     tmean_mean = mean((MIN+MAX)/2, na.rm = TRUE), #CHECK MEAN
     tmin_mean = mean(MIN, na.rm = TRUE),
@@ -38,59 +56,203 @@ tmean <- tdat %>%
   )
 
 #adjust doy to plot min and max
-tmean_min<- tmean[,c("CTRY", "period",  "YDAY", "tmin_mean","tmean_mean")]
+tmean_min<- tmean[,c("CTRY", "loc", "period",  "YDAY", "tmin_mean","tmean_mean")]
 tmean_min$YDAY<- tmean_min$YDAY -0.5
-names(tmean_min)[4]<- "temp"
-tmean_max<- tmean[,c("CTRY", "period",  "YDAY", "tmax_mean","tmean_mean")]
-names(tmean_max)[4]<- "temp"
+names(tmean_min)[5]<- "temp"
+tmean_max<- tmean[,c("CTRY", "loc", "period",  "YDAY", "tmax_mean","tmean_mean")]
+names(tmean_max)[5]<- "temp"
 tmean_l<- rbind(tmean_min, tmean_max)
 tmean_l<- tmean_l[order(tmean_l$YDAY),]
 
-#plot
-fig1a= ggplot(tmean_l, aes(x=YDAY, colour=CTRY, lty=period)) + 
-  geom_line(aes(y=temp),alpha=0.5)+
-  #geom_smooth(aes(y=temp), method="loess", se=FALSE)+
-  geom_smooth(aes(y=tmean_mean), method="loess", se=FALSE)+
-  scale_color_manual(values=c("darkorange","cornflowerblue"))+
-  theme_classic()+
-  ylab("Temperature (C)")+
-  xlab("Day of year")
+#plot potential for phenological shift day 200
+target_temps <- tmean %>%
+  filter(YDAY == 200, period == "1982-1984") %>%
+  select(CTRY, loc, target_temp = tmean_mean)
 
-#mean annual temperatures
-tann <- tmean %>%
-  group_by(CTRY, period) %>%
-  summarise(
-    tmean_mean = mean(tmean_mean), 
-    tmin_mean = mean(tmin_mean),
-    tmax_mean = mean(tmax_mean),
-    tmean_sd= sd(tmean_mean),
-    .groups   = "drop"
+matching_days<- tmean %>%
+  filter(period == "2022-2024") %>%
+  left_join(target_temps, by = c("CTRY", "loc")) %>%
+  mutate(diff = abs(tmean_mean - target_temp)) %>%
+  group_by(CTRY, loc) %>%
+  slice_min(diff, n = 1) %>%
+  select(loc, YDAY, tmean_mean)
+
+tmean_sel <- tmean %>%
+  filter(
+    # YDAY 200 in 1982-1984 for each site
+    (period == "1982-1984" & YDAY == 200) |
+      (period == "2022-2024" & YDAY == 200) |
+      # matched YDAY in 2022-2024 per CTRY/loc
+      (period == "2022-2024" & CTRY %in% matching_days$CTRY & 
+         paste(CTRY, loc, YDAY) %in% 
+         paste(matching_days$CTRY, matching_days$loc, matching_days$YDAY))
   )
 
-tann<- as.data.frame(tann)
-tann$loc<- ifelse(tann$CTRY=="MX", "trop", "temp")
+# YDAY 200 tmean_mean for both periods
+yday200 <- tmean_sel %>%
+  filter(YDAY == 200) %>%
+  pivot_wider(
+    id_cols     = c(CTRY, loc),
+    names_from  = period,
+    values_from = tmean_mean,
+    names_prefix = "tmean_YDAY200_"
+  )
+
+# matched YDAYs and their tmean_mean (the non-200 2022-2024 rows)
+matched <- tmean_sel %>%
+  filter(period == "2022-2024", YDAY != 200) %>%
+  select(CTRY, loc, matched_YDAY = YDAY, matched_tmean = tmean_mean)
+
+# join together
+tmean_wide <- yday200 %>%
+  left_join(matched, by = c("CTRY", "loc"))
+colnames(tmean_wide)<- gsub("-","_", colnames(tmean_wide) )
+
+#----
+#plot
+fig1a= ggplot(tmean_l, aes(x=YDAY, colour=loc)) + 
+  geom_line(aes(y=temp, lty=period),alpha=0.5)+
+  #geom_smooth(aes(y=temp), method="loess", se=FALSE)+
+  geom_smooth(aes(y=tmean_mean, lty=period), method="loess", se=FALSE, show.legend = FALSE)+
+  scale_color_manual(values=c("darkorange","cornflowerblue"))+
+  theme_classic(base_size = 14)+
+  ylab("Temperature (°C)")+
+  xlab("Day of year")+
+  ylim(-20,40)+
+  theme(legend.position = c(0.5,0.2), legend.background = element_rect(fill = "transparent", color = NA),axis.label = element_text(size = 16))+
+  labs(lty = "Period") +guides(color="none")+
+  #vertical lines for shift at day 200
+  geom_segment(data = tmean_wide, aes(x = 200, y = tmean_YDAY200_1982_1984, xend = 200, yend = tmean_YDAY200_2022_2024), linewidth=1.5, lty="dashed")+
+  # Horizontal arrow: 
+  geom_segment(
+    data = tmean_wide,
+    aes(
+      x    = 200,
+      xend = matched_YDAY,
+      y    = tmean_YDAY200_1982_1984,
+      yend = tmean_YDAY200_1982_1984,
+      color = loc
+    ),
+    arrow = arrow(length = unit(0.15, "cm"), type = "closed"), linewidth=1.5, show.legend = FALSE) 
 
 #-------------------------
 #FIG 1b, TPCs
 
-temps=1:40
+#mean annual temperatures
+tann <- tmean %>%
+  #growing season
+  filter( YDAY %in% 150:250) %>%
+  group_by(CTRY, loc, period) %>%
+  summarise(
+    tmean_sd= sd(tmean_mean),
+    tmean_mean = mean(tmean_mean), 
+    tmin_mean = mean(tmin_mean),
+    tmax_mean = mean(tmax_mean),
+    .groups   = "drop"
+  )
 
-temp.tpc<- TPC(temps, 18, 5, 28)*0.8 #scale to preserve area
+tann<- as.data.frame(tann)
+
+temps=seq(1, 40, 0.25)
+
+temp.tpc<- TPC(temps, 20, 7, 30)*0.8 #scale to preserve area
 trop.tpc<- TPC(temps, 28, 20, 32)
 
 tpcs<- as.data.frame(rbind( cbind(loc="temp", temp=temps, perf=temp.tpc), cbind(loc="trop", temp=temps, perf=trop.tpc) ))
 tpcs$temp= as.numeric(tpcs$temp)
 tpcs$perf= as.numeric(tpcs$perf)
 
+#adjust temperature height
+tann$y<- c(0.05, 0.1, 0.05, 0.1)
+tann$perf<- TPC(tann$tmean_mean, 20, 7, 30)*0.8
+tann$perf[which(tann$loc=="trop")]<- TPC(tann$tmean_mean[which(tann$loc=="trop")], 28, 20, 32)
+
 #plot
 fig1b= ggplot(tpcs, aes(x=temp, y= perf, color=loc)) + 
-  geom_line(linewidth=2)+
+  geom_line(linewidth=1)+
   geom_point(
     data = tann,
-    mapping = aes(x = tmean_mean, y = 0, pch=period), size=3 )+  #+ inherit.aes = FALSE
+    mapping = aes(x = tmean_mean, y = y, pch=period), size=3 )+  #+ inherit.aes = FALSE
   scale_color_manual(values=c("darkorange","cornflowerblue"))+
-  theme_classic()+
-  ylab("Performance")+
-  xlab("Body temperature (C)")
+  theme_classic(base_size = 14)+
+  ylab("Relative performance")+
+  xlab("Body temperature (°C)")+
+  geom_segment(data = tann, aes(x = tmean_mean-tmean_sd, y = y, xend = tmean_mean+tmean_sd, yend = y), linewidth=1)+
+  #add vertical lines
+  geom_segment(data = tann, aes(x = tmean_mean, y = y, xend = tmean_mean, yend = perf), linewidth=0.5, lty="dashed")+
+  theme(legend.position = "none",axis.label = element_text(size = 16))+
+  labs(pch = "Period", colour="Region") 
 
-#geom_segment
+#-------------------------
+#FIG 1c, metabolism
+
+# --- Parameters from Gillooly et al. 2001 ---
+k  <- 8.617e-5   # Boltzmann's constant (eV/K)
+E  <- 0.65       # Activation energy (eV); Gillooly range ~0.6–0.7 eV
+B0 <- 1          # Normalization constant (arbitrary units; mass held constant)
+m  <- 1          # Body mass (g); held constant to isolate temperature effect
+
+temp_K <- temps + 273.15
+
+# Metabolic rate: Boltzmann-Arrhenius factor (mass fixed at m=1 so m^0.75 = 1)
+mr<- function(temp_K) B0 * m^(3/4) * exp(-E / (k * temp_K))
+
+df <- data.frame(temp_C = temps, B = mr(temp_K) )
+
+#metabolic rate corresponding to temps
+tann$mr= mr(tann$tmean_mean + 273.15)
+#update labels
+tann$loc= ifelse(tann$loc=="temp", "temperate", "sub-tropical")
+
+# Pivot to wide so each CTRY has both periods on one row
+tann_wide <- tann %>%
+  select(loc, period, tmean_mean, mr) %>% 
+  pivot_wider(
+    id_cols     = loc,
+    names_from  = period,
+    values_from = c(tmean_mean, mr)
+  )
+  
+colnames(tann_wide)<- gsub("-","_", colnames(tann_wide) )
+
+# --- Plot ---
+fig1c<- ggplot(df, aes(x = temp_C, y = B)) +
+  geom_line(linewidth = 1.1) +
+  scale_color_manual(values=c("cornflowerblue","darkorange"))+
+  theme_classic(base_size = 14)+
+  ylab("Realtive metabolic rate")+
+  xlab("Body temperature (°C)")+
+  geom_point(
+    data = tann,
+    mapping = aes(x = tmean_mean, y = mr, pch=period, color=loc), size=3)+
+  # Horizontal arrow: from tmean_mean 1980 to tmean_mean 2020, at height mr1_1980
+  geom_segment(
+    data = tann_wide,
+    aes(
+      x    = tmean_mean_1982_1984,
+      xend = tmean_mean_2022_2024,
+      y    = mr_1982_1984,
+      yend = mr_1982_1984,
+      color = loc
+    ),
+    arrow = arrow(length = unit(0.15, "cm"), type = "closed") , show.legend = FALSE) +
+  # Vertical line: from mr1_1980 down to mr1_2020, at x = tmean_mean_2020
+  geom_segment(
+    data = tann_wide,
+    aes(
+      x    = tmean_mean_2022_2024,
+      xend = tmean_mean_2022_2024,
+      y    = mr_1982_1984,
+      yend = mr_2022_2024,
+      color = loc
+    ),
+    linetype = "dashed"
+  ) +
+  theme(legend.position = c(0.3,0.7))+
+  labs(pch = "Period", colour="Region", lty="none") +
+  theme(axis.text.y = element_blank(),axis.label = element_text(size = 16))
+  
+#save figure
+pdf("figures/Fig_1.pdf", height = 4, width = 10)
+fig1a +fig1b +fig1c + plot_annotation(tag_levels = 'A')
+dev.off()
