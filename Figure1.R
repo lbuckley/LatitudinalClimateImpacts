@@ -4,6 +4,8 @@ library(tidyr)
 library(ggplot2)
 library(TrenchR)
 library(patchwork)
+library(mgcv)
+library(purrr)
 
 #FIG 1a, seasonal temperature variation
 #find stations
@@ -64,76 +66,79 @@ names(tmean_max)[5]<- "temp"
 tmean_l<- rbind(tmean_min, tmean_max)
 tmean_l<- tmean_l[order(tmean_l$YDAY),]
 
+#----
 #plot potential for phenological shift day 200
-target_temps <- tmean %>%
+
+# Step 1: Fit a GAM per loc/period and predict over all YDAYs
+yday_seq <- data.frame(YDAY = 1:365)
+
+smoothed <- tmean %>%
+  group_by(loc, CTRY, period) %>%
+  group_map(~ {
+    fit <- gam(tmean_mean ~ s(YDAY, k = 4), data = .x)
+    yday_seq %>%
+      mutate(
+        tmean_smooth = predict(fit, newdata = yday_seq),
+        loc    = .y$loc,
+        CTRY   = .y$CTRY,
+        period = .y$period
+      )
+  }) %>%
+  bind_rows()
+
+# Step 2: Extract smoothed temp at YDAY 200 in 1982-1984 per loc
+target_temps <- smoothed %>%
   filter(YDAY == 200, period == "1982-1984") %>%
-  select(CTRY, loc, target_temp = tmean_mean)
+  select(loc, CTRY, target_temp = tmean_smooth)
 
-matching_days<- tmean %>%
-  filter(period == "2022-2024") %>%
-  left_join(target_temps, by = c("CTRY", "loc")) %>%
-  mutate(diff = abs(tmean_mean - target_temp)) %>%
-  group_by(CTRY, loc) %>%
+# Step 3: Find YDAY in 2022-2024 closest to that smoothed temp
+matched_days <- smoothed %>%
+  filter(period == "2022-2024", YDAY < 200) %>%
+  left_join(target_temps, by = c("loc", "CTRY")) %>%
+  mutate(diff = abs(tmean_smooth - target_temp)) %>%
+  group_by(loc, CTRY) %>%
   slice_min(diff, n = 1) %>%
-  select(loc, YDAY, tmean_mean)
+  select(loc, CTRY, matched_YDAY = YDAY, matched_tmean = tmean_smooth)
 
-tmean_sel <- tmean %>%
-  filter(
-    # YDAY 200 in 1982-1984 for each site
-    (period == "1982-1984" & YDAY == 200) |
-      (period == "2022-2024" & YDAY == 200) |
-      # matched YDAY in 2022-2024 per CTRY/loc
-      (period == "2022-2024" & CTRY %in% matching_days$CTRY & 
-         paste(CTRY, loc, YDAY) %in% 
-         paste(matching_days$CTRY, matching_days$loc, matching_days$YDAY))
-  )
-
-# YDAY 200 tmean_mean for both periods
-yday200 <- tmean_sel %>%
-  filter(YDAY == 200) %>%
-  pivot_wider(
-    id_cols     = c(CTRY, loc),
-    names_from  = period,
-    values_from = tmean_mean,
-    names_prefix = "tmean_YDAY200_"
-  )
-
-# matched YDAYs and their tmean_mean (the non-200 2022-2024 rows)
-matched <- tmean_sel %>%
-  filter(period == "2022-2024", YDAY != 200) %>%
-  select(CTRY, loc, matched_YDAY = YDAY, matched_tmean = tmean_mean)
-
-# join together
-tmean_wide <- yday200 %>%
-  left_join(matched, by = c("CTRY", "loc"))
-colnames(tmean_wide)<- gsub("-","_", colnames(tmean_wide) )
+# Step 4: Assemble final data frame
+tmean_wide <- target_temps %>%
+  left_join(
+    smoothed %>%
+      filter(YDAY == 200, period == "2022-2024") %>%
+      select(loc, CTRY, tmean_smooth_2022_YDAY200 = tmean_smooth),
+    by = c("loc", "CTRY")
+  ) %>%
+  left_join(matched_days, by = c("loc", "CTRY")) %>%
+  rename(tmean_smooth_1982_YDAY200 = target_temp)
 
 #----
 #plot
 fig1a= ggplot(tmean_l, aes(x=YDAY, colour=loc)) + 
   geom_line(aes(y=temp, lty=period),alpha=0.5)+
-  #geom_smooth(aes(y=temp), method="loess", se=FALSE)+
+  # smooth lines
+  #geom_line(data = smoothed, aes(x = YDAY, y = tmean_smooth, lty=period), linewidth = 1) +
   geom_smooth(aes(y=tmean_mean, lty=period), method="loess", se=FALSE, show.legend = FALSE)+
   scale_color_manual(values=c("darkorange","cornflowerblue"))+
   theme_classic(base_size = 14)+
   ylab("Temperature (°C)")+
   xlab("Day of year")+
   ylim(-20,40)+
-  theme(legend.position = c(0.5,0.2), legend.background = element_rect(fill = "transparent", color = NA),axis.label = element_text(size = 16))+
+  theme(legend.position = c(0.55,0.2), legend.background = element_rect(fill = "transparent", color = NA),axis.label = element_text(size = 16))+
   labs(lty = "Period") +guides(color="none")+
   #vertical lines for shift at day 200
-  geom_segment(data = tmean_wide, aes(x = 200, y = tmean_YDAY200_1982_1984, xend = 200, yend = tmean_YDAY200_2022_2024), linewidth=1.5, lty="dashed")+
+  geom_segment(data = tmean_wide, aes(x = 200, y = tmean_smooth_1982_YDAY200, xend = 200, yend = tmean_smooth_2022_YDAY200), linewidth=0.7)+
   # Horizontal arrow: 
   geom_segment(
     data = tmean_wide,
     aes(
       x    = 200,
       xend = matched_YDAY,
-      y    = tmean_YDAY200_1982_1984,
-      yend = tmean_YDAY200_1982_1984,
+      y    = matched_tmean,
+      yend = matched_tmean,
       color = loc
     ),
-    arrow = arrow(length = unit(0.15, "cm"), type = "closed"), linewidth=1.5, show.legend = FALSE) 
+    arrow = arrow(length = unit(0.15, "cm"), type = "closed"), linewidth=0.7, show.legend = FALSE)+
+  xlim(30,333)
 
 #-------------------------
 #FIG 1b, TPCs
