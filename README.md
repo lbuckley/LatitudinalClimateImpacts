@@ -34,7 +34,7 @@ CC0 1.0 Universal (CC0 1.0)
 Public Domain Dedication
 
 ## 2. Data derived from other sources
-NA
+Code downloads the followign environmental data: US National Centers for Environmental Information (NCEI) Global Surface Summary of the Day (GSOD)
 
 ## 3. Recommended citation for this data/code archive
 Buckley LB. Climate variability and extremes flatten latitudinal clines in climate change impacts. https://github.com/lbuckley/LatitudinalClimateImpacts/. 
@@ -57,12 +57,19 @@ R version 4.3.1 (2023-06-16)
 Packages: #utils::sessionInfo()
 
 library(GSODR) #GSODR_4.1.4
+
 library(dplyr) #dplyr_1.1.2
+
 library(tidyr) #tidyr_1.3.0 
+
 library(ggplot2) #ggplot2_3.5.2
+
 library(TrenchR) #TrenchR_1.1.1
+
 library(patchwork) #patchwork_1.2.0.9000
+
 library(mgcv) #mgcv_1.8-42
+
 library(purrr) #purrr_1.0.2
 
 # REFERENCES
