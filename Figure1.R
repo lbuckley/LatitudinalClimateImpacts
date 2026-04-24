@@ -9,27 +9,25 @@ library(purrr)
 
 #FIG 1a, seasonal temperature variation
 #find stations
-nearest_stations(LAT = 7, LON = -71.8, distance = 1500)
 nearest_stations(LAT = 21.4, LON = -101.9, distance = 1500)
-nearest_stations(LAT = -2.7, LON = -59.4, distance = 1500)
-#766250-99999       QUERETARO INTERCONTINENTAL
-#use higher lat? 820980-99999 MACAPA / ALBERTO ALCOLUMBRE
 #763930-99999                                MONTERREY  N.L. ***USE 25.733 -100.300   515.0
+
+#other options:
 #768056-99999 GENERAL JUAN N ALVAREZ INTL / ACAPULCO INTL
 #767270-99999                               ZACATEPEC MOR
 #766750-99999                                      TOLUCA  MEX.
 #765710-99999 JESUS TERAN INTL / AGUASCALIENTES INTL 21.705 -102.318  1862.9
 #821110-99999     EDUARDO GOMES INTL  -3.039 -60.050    80.5 
 
-nearest_stations(LAT = 69, LON = -133, distance = 200)
 nearest_stations(LAT = 53.5, LON = -112.1, distance = 100)
-#nearest_stations(LAT = 40, LON = -105.27, distance = 100)
+# 711210-99999           EDMONTON/NAMAO(MIL) ***USE 53.667 -113.467   688.0  
+
+#other options:
 #724655-93990   HILL CITY MUNICIPAL ARPT
 #lower lat? 711400-99999       BRANDON MUNI 
 #724695-23036       BUCKLEY AIR FORCE BASE
 #719595-99999 TUKTOYAKTUK / JAMES GRUBEN 
 #719570-99999          INUVIK MIKE ZUBKO
-# 711210-99999           EDMONTON/NAMAO(MIL) ***USE 53.667 -113.467   688.0  
 
 #retrieve data
 trop.p <- get_GSOD(years = c(1982:1984), station = "763930-99999")
