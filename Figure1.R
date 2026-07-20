@@ -30,18 +30,29 @@ nearest_stations(LAT = 53.5, LON = -112.1, distance = 100)
 #719570-99999          INUVIK MIKE ZUBKO
 
 #retrieve data
-trop.p <- get_GSOD(years = c(1982:1984), station = "763930-99999")
+trop.p <- get_GSOD(years = c(1982:1984), station = "821110-99999")
+strop.p <- get_GSOD(years = c(1982:1984), station = "763930-99999")
 temp.p <- get_GSOD(years = c(1982:1984), station = "711210-99999")
-trop.r <- get_GSOD(years = c(2022:2024), station = "763930-99999")
+
+trop.p <- get_GSOD(years = c(2022:2024), station = "821110-99999")
+strop.r <- get_GSOD(years = c(2022:2024), station = "763930-99999")
 temp.r <- get_GSOD(years = c(2022:2024), station = "711210-99999")
 
 #combine
-tdat<- rbind(trop.p[,c("CTRY", "YEAR", "YDAY", "TEMP","MIN","MAX")],
-             temp.p[,c("CTRY", "YEAR", "YDAY", "TEMP","MIN","MAX")],
-             trop.r[,c("CTRY", "YEAR", "YDAY", "TEMP","MIN","MAX")],
-             temp.r[,c("CTRY", "YEAR", "YDAY", "TEMP","MIN","MAX")] )
+tdat<- rbind(trop.p[,c("CTRY", "LATITUDE", "LONGITUDE", "ELEVATION", "YEAR", "YDAY", "TEMP","MIN","MAX")],
+             strop.p[,c("CTRY", "LATITUDE", "LONGITUDE", "ELEVATION", "YEAR", "YDAY", "TEMP","MIN","MAX")],
+             temp.p[,c("CTRY", "LATITUDE", "LONGITUDE", "ELEVATION", "YEAR", "YDAY", "TEMP","MIN","MAX")],
+             trop.r[,c("CTRY", "LATITUDE", "LONGITUDE", "ELEVATION", "YEAR", "YDAY", "TEMP","MIN","MAX")],
+             strop.r[,c("CTRY", "LATITUDE", "LONGITUDE", "ELEVATION", "YEAR", "YDAY", "TEMP","MIN","MAX")],
+             temp.r[,c("CTRY", "LATITUDE", "LONGITUDE", "ELEVATION", "YEAR", "YDAY", "TEMP","MIN","MAX")] )
 
-tdat$loc<- ifelse(tdat$CTRY=="MX", "trop", "temp")
+lats<- c(-3.039, 25.733, 53.667)
+locs<- c("trop","strop","temp")
+
+tdat$loc<- locs[match(tdat$LATITUDE, lats)]
+
+#write out
+write.csv(tdat, "data/tempdat_3locs.csv")
 
 #mean across years
 tmean <- tdat %>%
@@ -116,7 +127,7 @@ fig1a= ggplot(tmean_l, aes(x=YDAY, colour=loc)) +
   # smooth lines
   #geom_line(data = smoothed, aes(x = YDAY, y = tmean_smooth, lty=period), linewidth = 1) +
   geom_smooth(aes(y=tmean_mean, lty=period), method="loess", se=FALSE, show.legend = FALSE)+
-  scale_color_manual(values=c("darkorange","cornflowerblue"))+
+  #scale_color_manual(values=c("darkorange","cornflowerblue"))+
   theme_classic(base_size = 14)+
   ylab("Temperature (°C)")+
   xlab("Day of year")+
@@ -171,8 +182,11 @@ tann$perf<- TPC(tann$tmean_mean, 20, 7, 30)*0.8
 tann$perf[which(tann$loc=="trop")]<- TPC(tann$tmean_mean[which(tann$loc=="trop")], 28, 20, 32)
 
 #plot
-fig1b= ggplot(tpcs, aes(x=temp, y= perf, color=loc)) + 
-  geom_line(linewidth=1)+
+fig1b= ggplot(data=tpcs, aes(color=loc)) + 
+  #add temperature distributions
+  #may through october
+  geom_density(data=tmean[tmean$YDAY %in% c(121:304),], aes(x=tmean_mean, y = after_stat(scaled), fill=period, alpha=0.2), adjust=2 )+
+  geom_line(data=tpcs, aes(x=temp, y= perf), linewidth=1)+
   geom_point(
     data = tann,
     mapping = aes(x = tmean_mean, y = y, pch=period), size=3 )+  #+ inherit.aes = FALSE
@@ -183,8 +197,9 @@ fig1b= ggplot(tpcs, aes(x=temp, y= perf, color=loc)) +
   geom_segment(data = tann, aes(x = tmean_mean-tmean_sd, y = y, xend = tmean_mean+tmean_sd, yend = y), linewidth=1)+
   #add vertical lines
   geom_segment(data = tann, aes(x = tmean_mean, y = y, xend = tmean_mean, yend = perf), linewidth=0.5, lty="dashed")+
-  theme(legend.position = "none",axis.label = element_text(size = 16))+
+  #theme(legend.position = "none",axis.label = element_text(size = 16))+
   labs(pch = "Period", colour="Region") 
+
 
 #-------------------------
 #FIG 1c, metabolism
