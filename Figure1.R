@@ -217,7 +217,11 @@ fig1b= ggplot(data=tpcs, aes(color=loc)) +
   geom_segment(data = tann, aes(x = tmean_mean, y = y, xend = tmean_mean, yend = perf), linewidth=0.5, lty="dashed")+
   theme(legend.position = c(0.7, 0.7), axis.label = element_text(size = 16))+
   labs(pch = "Period", lty="Period", colour="Region", fill="Region") +
-  guides(colour="none", fill="none")
+  guides(colour="none", fill="none")+
+  scale_y_continuous(
+    name = "Relative performance",
+    sec.axis = sec_axis(~ ., name = "Density of temperatures")
+  )
 
 #-------------------------
 #FIG 1c, metabolism
