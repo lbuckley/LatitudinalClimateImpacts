@@ -34,7 +34,7 @@ trop.p <- get_GSOD(years = c(1982:1984), station = "821110-99999")
 strop.p <- get_GSOD(years = c(1982:1984), station = "763930-99999")
 temp.p <- get_GSOD(years = c(1982:1984), station = "711210-99999")
 
-trop.p <- get_GSOD(years = c(2022:2024), station = "821110-99999")
+trop.r <- get_GSOD(years = c(2022:2024), station = "821110-99999")
 strop.r <- get_GSOD(years = c(2022:2024), station = "763930-99999")
 temp.r <- get_GSOD(years = c(2022:2024), station = "711210-99999")
 
@@ -47,12 +47,16 @@ tdat<- rbind(trop.p[,c("CTRY", "LATITUDE", "LONGITUDE", "ELEVATION", "YEAR", "YD
              temp.r[,c("CTRY", "LATITUDE", "LONGITUDE", "ELEVATION", "YEAR", "YDAY", "TEMP","MIN","MAX")] )
 
 lats<- c(-3.039, 25.733, 53.667)
-locs<- c("trop","strop","temp")
+locs<- c("tropical","subtropical","temperate")
+loc_sh<- c("trop","strop","temp")
 
 tdat$loc<- locs[match(tdat$LATITUDE, lats)]
 
 #write out
-write.csv(tdat, "data/tempdat_3locs.csv")
+#write.csv(tdat, "data/tempdat_3locs.csv")
+tdat<- read.csv("data/tempdat_3locs.csv")
+#change names
+tdat$loc<- locs[match(tdat$loc, loc_sh)]
 
 #mean across years
 tmean <- tdat %>%
@@ -121,19 +125,21 @@ tmean_wide <- target_temps %>%
   rename(tmean_smooth_1982_YDAY200 = target_temp)
 
 #----
+tmean_l$loc<- factor(tmean_l$loc, ordered=T, levels=c("temperate", "subtropical", "tropical") )
+
 #plot
 fig1a= ggplot(tmean_l, aes(x=YDAY, colour=loc)) + 
-  geom_line(aes(y=temp, lty=period),alpha=0.5)+
+  geom_line(aes(y=temp, lty=period),alpha=0.4)+
   # smooth lines
   #geom_line(data = smoothed, aes(x = YDAY, y = tmean_smooth, lty=period), linewidth = 1) +
   geom_smooth(aes(y=tmean_mean, lty=period), method="loess", se=FALSE, show.legend = FALSE)+
-  #scale_color_manual(values=c("darkorange","cornflowerblue"))+
+  scale_color_manual(values=c("#0868ac", "#43a2ca","#7bccc4"))+ 
   theme_classic(base_size = 14)+
   ylab("Temperature (°C)")+
   xlab("Day of year")+
   ylim(-20,40)+
-  theme(legend.position = c(0.55,0.2), legend.background = element_rect(fill = "transparent", color = NA),axis.label = element_text(size = 16))+
-  labs(lty = "Period") +guides(color="none")+
+  theme(legend.position = c(0.55,0.3), legend.background = element_rect(fill = "transparent", color = NA),axis.label = element_text(size = 16))+
+  labs(lty = "Period", color="Region") +guides(color="none")+
   #vertical lines for shift at day 200
   geom_segment(data = tmean_wide, aes(x = 200, y = tmean_smooth_1982_YDAY200, xend = 200, yend = tmean_smooth_2022_YDAY200), linewidth=0.7)+
   # Horizontal arrow: 
@@ -146,8 +152,8 @@ fig1a= ggplot(tmean_l, aes(x=YDAY, colour=loc)) +
       yend = matched_tmean,
       color = loc
     ),
-    arrow = arrow(length = unit(0.15, "cm"), type = "closed"), linewidth=0.7, show.legend = FALSE)+
-  xlim(30,333)
+    arrow = arrow(length = unit(0.15, "cm"), type = "closed"), linewidth=1.5, show.legend = FALSE)+
+  xlim(33,333)
 
 #-------------------------
 #FIG 1b, TPCs
@@ -155,7 +161,7 @@ fig1a= ggplot(tmean_l, aes(x=YDAY, colour=loc)) +
 #mean annual temperatures
 tann <- tmean %>%
   #growing season
-  filter( YDAY %in% 150:250) %>%
+  filter( YDAY %in% 121:304) %>% #150:250 OR 121:304
   group_by(CTRY, loc, period) %>%
   summarise(
     tmean_sd= sd(tmean_mean),
@@ -169,37 +175,49 @@ tann<- as.data.frame(tann)
 
 temps=seq(1, 40, 0.25)
 
-temp.tpc<- TPC(temps, 20, 7, 30)*0.8 #scale to preserve area
+temp.tpc<- TPC(temps, 20, 6, 30)*0.6 #scale to preserve area
+strop.tpc<- TPC(temps, 28, 13, 32)*0.8
 trop.tpc<- TPC(temps, 28, 20, 32)
 
-tpcs<- as.data.frame(rbind( cbind(loc="temp", temp=temps, perf=temp.tpc), cbind(loc="trop", temp=temps, perf=trop.tpc) ))
+tpcs<- as.data.frame(rbind( cbind(loc="temperate", temp=temps, perf=temp.tpc), cbind(loc="subtropical", temp=temps, perf=strop.tpc), cbind(loc="tropical", temp=temps, perf=trop.tpc) ))
 tpcs$temp= as.numeric(tpcs$temp)
 tpcs$perf= as.numeric(tpcs$perf)
 
 #adjust temperature height
-tann$y<- c(0.05, 0.1, 0.05, 0.1)
-tann$perf<- TPC(tann$tmean_mean, 20, 7, 30)*0.8
-tann$perf[which(tann$loc=="trop")]<- TPC(tann$tmean_mean[which(tann$loc=="trop")], 28, 20, 32)
+tann$y<- c(0.05, 0.1, 0.05, 0.1, 0.05, 0.1)
+tann$perf<- NA 
+tann$perf[which(tann$loc=="temperate")]<- TPC(tann$tmean_mean[which(tann$loc=="temperate")], 20, 6, 30)*0.6
+tann$perf[which(tann$loc=="subtropical")]<- TPC(tann$tmean_mean[which(tann$loc=="subtropical")], 28, 13, 32)*0.8
+tann$perf[which(tann$loc=="tropical")]<- TPC(tann$tmean_mean[which(tann$loc=="tropical")], 28, 20, 32)
+
+#make temp per group
+tmean$group= paste(tmean$loc, tmean$period, sep="_")
+
+tpcs$loc <- factor(tpcs$loc, ordered=T, levels=c("temperate", "subtropical", "tropical") )
+tmean$loc <- factor(tmean$loc, ordered=T, levels=c("temperate", "subtropical", "tropical") )
+tann$loc <- factor(tann$loc, ordered=T, levels=c("temperate", "subtropical", "tropical") )
 
 #plot
 fig1b= ggplot(data=tpcs, aes(color=loc)) + 
   #add temperature distributions
   #may through october
-  geom_density(data=tmean[tmean$YDAY %in% c(121:304),], aes(x=tmean_mean, y = after_stat(scaled), fill=period, alpha=0.2), adjust=2 )+
-  geom_line(data=tpcs, aes(x=temp, y= perf), linewidth=1)+
+  geom_density(data=tmean[tmean$YDAY %in% c(121:304),], aes(x=tmean_mean, y = after_stat(scaled), fill=loc, lty=period), adjust=2, alpha=0.4 )+
+  geom_line(data=tpcs, aes(x=temp, y= perf), color="black", linewidth=1, alpha=1)+
   geom_point(
     data = tann,
     mapping = aes(x = tmean_mean, y = y, pch=period), size=3 )+  #+ inherit.aes = FALSE
-  scale_color_manual(values=c("darkorange","cornflowerblue"))+
+  scale_color_manual(values=c("#0868ac", "#43a2ca","#7bccc4"))+
+  scale_fill_manual(values=c("#0868ac", "#43a2ca","#7bccc4"))+
+  facet_wrap(.~loc)+
   theme_classic(base_size = 14)+
   ylab("Relative performance")+
   xlab("Body temperature (°C)")+
   geom_segment(data = tann, aes(x = tmean_mean-tmean_sd, y = y, xend = tmean_mean+tmean_sd, yend = y), linewidth=1)+
   #add vertical lines
   geom_segment(data = tann, aes(x = tmean_mean, y = y, xend = tmean_mean, yend = perf), linewidth=0.5, lty="dashed")+
-  #theme(legend.position = "none",axis.label = element_text(size = 16))+
-  labs(pch = "Period", colour="Region") 
-
+  theme(legend.position = c(0.7, 0.7), axis.label = element_text(size = 16))+
+  labs(pch = "Period", lty="Period", colour="Region", fill="Region") +
+  guides(colour="none", fill="none")
 
 #-------------------------
 #FIG 1c, metabolism
@@ -219,8 +237,6 @@ df <- data.frame(temp_C = temps, B = mr(temp_K) )
 
 #metabolic rate corresponding to temps
 tann$mr= mr(tann$tmean_mean + 273.15)
-#update labels
-tann$loc= ifelse(tann$loc=="temp", "temperate", "sub-tropical")
 
 # Pivot to wide so each CTRY has both periods on one row
 tann_wide <- tann %>%
@@ -236,9 +252,9 @@ colnames(tann_wide)<- gsub("-","_", colnames(tann_wide) )
 # --- Plot ---
 fig1c<- ggplot(df, aes(x = temp_C, y = B)) +
   geom_line(linewidth = 1.1) +
-  scale_color_manual(values=c("cornflowerblue","darkorange"))+
+  scale_color_manual(values=c("#0868ac", "#43a2ca","#7bccc4"))+ 
   theme_classic(base_size = 14)+
-  ylab("Realtive metabolic rate")+
+  ylab("Relative metabolic rate")+
   xlab("Body temperature (°C)")+
   geom_point(
     data = tann,
@@ -271,6 +287,10 @@ fig1c<- ggplot(df, aes(x = temp_C, y = B)) +
   theme(axis.text.y = element_blank(),axis.label = element_text(size = 16))
   
 #save figure
-pdf("figures/Fig_1.pdf", height = 4, width = 10)
-fig1a +fig1b +fig1c + plot_annotation(tag_levels = 'A')
+design <- "AACC
+           BBBB"
+
+pdf("figures/Fig_1.pdf", height = 10, width = 10)
+fig1a +fig1b +fig1c + plot_annotation(tag_levels = 'A')+
+  plot_layout(design=design)
 dev.off()
