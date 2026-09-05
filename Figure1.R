@@ -6,6 +6,7 @@ library(TrenchR)
 library(patchwork)
 library(mgcv)
 library(purrr)
+library(viridis)
 
 #FIG 1a, seasonal temperature variation
 #find stations
@@ -129,11 +130,11 @@ tmean_l$loc<- factor(tmean_l$loc, ordered=T, levels=c("temperate", "subtropical"
 
 #plot
 fig1a= ggplot(tmean_l, aes(x=YDAY, colour=loc)) + 
-  geom_line(aes(y=temp, lty=period),alpha=0.4)+
+  geom_line(aes(y=temp, lty=period),alpha=0.5)+
   # smooth lines
   #geom_line(data = smoothed, aes(x = YDAY, y = tmean_smooth, lty=period), linewidth = 1) +
   geom_smooth(aes(y=tmean_mean, lty=period), method="loess", se=FALSE, show.legend = FALSE)+
-  scale_color_manual(values=c("#0868ac", "#43a2ca","#7bccc4"))+ 
+  scale_color_manual(values=c("#40498EFF", "#348AA6FF","#54C9ADFF"))+ 
   theme_classic(base_size = 14)+
   ylab("Temperature (°C)")+
   xlab("Day of year")+
@@ -141,7 +142,7 @@ fig1a= ggplot(tmean_l, aes(x=YDAY, colour=loc)) +
   theme(legend.position = c(0.55,0.3), legend.background = element_rect(fill = "transparent", color = NA),axis.label = element_text(size = 16))+
   labs(lty = "Period", color="Region") +guides(color="none")+
   #vertical lines for shift at day 200
-  geom_segment(data = tmean_wide, aes(x = 200, y = tmean_smooth_1982_YDAY200, xend = 200, yend = tmean_smooth_2022_YDAY200), linewidth=0.7)+
+  geom_segment(data = tmean_wide, aes(x = 200, y = tmean_smooth_1982_YDAY200, xend = 200, yend = tmean_smooth_2022_YDAY200), linewidth=1)+
   # Horizontal arrow: 
   geom_segment(
     data = tmean_wide,
@@ -206,9 +207,11 @@ fig1b= ggplot(data=tpcs, aes(color=loc)) +
   geom_point(
     data = tann,
     mapping = aes(x = tmean_mean, y = y, pch=period), size=3 )+  #+ inherit.aes = FALSE
-  scale_color_manual(values=c("#0868ac", "#43a2ca","#7bccc4"))+
-  scale_fill_manual(values=c("#0868ac", "#43a2ca","#7bccc4"))+
-  facet_wrap(.~loc)+
+  scale_color_manual(values=c("#40498EFF", "#348AA6FF","#54C9ADFF"))+
+    scale_fill_manual(values=c("#40498EFF", "#348AA6FF","#54C9ADFF"))+
+   # scale_color_manual(values=c("#0868ac", "#43a2ca","#7bccc4"))+
+#  scale_fill_manual(values=c("#0868ac", "#43a2ca","#7bccc4"))+
+   facet_wrap(.~loc)+
   theme_classic(base_size = 14)+
   ylab("Relative performance")+
   xlab("Body temperature (°C)")+
@@ -256,7 +259,7 @@ colnames(tann_wide)<- gsub("-","_", colnames(tann_wide) )
 # --- Plot ---
 fig1c<- ggplot(df, aes(x = temp_C, y = B)) +
   geom_line(linewidth = 1.1) +
-  scale_color_manual(values=c("#0868ac", "#43a2ca","#7bccc4"))+ 
+  scale_color_manual(values=c("#40498EFF", "#348AA6FF","#54C9ADFF"))+ 
   theme_classic(base_size = 14)+
   ylab("Relative metabolic rate")+
   xlab("Body temperature (°C)")+
