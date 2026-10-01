@@ -1,14 +1,14 @@
 # Latitudinal Climate Impacts
-Code for an AmNat perspective on latitudinal gradients in climate change impacts 
+Code for an AmNat perspective on latitudinal gradients in climate change impacts. Early conclusions that high exposure to climate change would center impacts at high latitudes were reversed by the sensitivity of tropical organisms. New research considering climate variability suggests mid-latitude vulnerability.
 
 # GENERAL INFORMATION
 
-This README.md file was updated on April 24, 2026 by Lauren Buckley
+This README.md file was updated on September 30, 2026 by Lauren Buckley
 
 ## A. Paper associated with this archive 
-Citation: Buckley LB. Climate variability and extremes flatten latitudinal clines in climate change impacts. American Naturalist
+Citation: Buckley LB. Climate variability and extremes flatten latitudinal clines in organismal sensitivity and exposure to climate change. American Naturalist
 
-Introduction: Biological impacts of climate change were initially anticipated to be concentrated at higher latitudes where environmental warming is strongest. Subsequent studies emphasized the need to consider organismal sensitivity, not exclusively environmental exposure. Many tropical species are thermal specialists due to evolving in aseasonal climates and might experience more thermal stress despite mild tropical warming. Documentation of tropical impacts is sparse but accumulating. Initial characterizations of organismal sensitivity relied on constant temperature experiments, but organisms are highly sensitive to climate extremes in their variable natural environments. New environmental data and experiments incorporating realistic environmental variability are challenging current understanding of organismal sensitivity across latitudes. Greater temperature variability and more frequent extremes (and their greater increases with warming) can accentuate temperate-zone impacts, even given lesser sensitivity to warming. Here we revisit latitudinal clines in environmental exposure and organismal sensitivity with a focus on temporal environmental variability. 
+Abstract: Emerging research accounting for climate variability and extremes spotlights the vulnerability of mid-latitude ecosystems to climate change. Mid-latitude organisms are relatively sensitive to their environments yet exposed to substantial environmental variation. Components of organismal sensitivity that vary latitudinally include thermal specialization and tolerance, the potential for environmental tracking and evolutionary responses, and the temperature sensitivity of biological rates. Anticipating the biodiversity impacts of climate change across latitudes will require investigating how environmental variation and biological responses at multiple timescales integrate over lifecycles to shape fitness outcomes. 
 
 ## B. Originators
 Lauren B. Buckley, Department of Biology, University of Washington, Seattle, WA 98195-1800, USA
@@ -34,10 +34,10 @@ CC0 1.0 Universal (CC0 1.0)
 Public Domain Dedication
 
 ## 2. Data derived from other sources
-Code downloads the followign environmental data: US National Centers for Environmental Information (NCEI) Global Surface Summary of the Day (GSOD)
+Code downloads the following environmental data: US National Centers for Environmental Information (NCEI) Global Surface Summary of the Day (GSOD)
 
 ## 3. Recommended citation for this data/code archive
-Buckley LB. Climate variability and extremes flatten latitudinal clines in climate change impacts. https://github.com/lbuckley/LatitudinalClimateImpacts/. 
+Buckley LB. Climate variability and extremes flatten latitudinal clines in organismal sensitivity and exposure to climate change. https://github.com/lbuckley/LatitudinalClimateImpacts/. 
 
 Data and code will be archived in Zenodo upon acceptance.
 
