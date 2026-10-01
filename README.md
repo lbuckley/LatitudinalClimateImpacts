@@ -1,4 +1,5 @@
 # Latitudinal Climate Impacts
+[![DOI](https://zenodo.org/badge/1171103415.svg)](https://doi.org/10.5281/zenodo.23074418)
 Code for an AmNat perspective on latitudinal gradients in climate change impacts. Early conclusions that high exposure to climate change would center impacts at high latitudes were reversed by the sensitivity of tropical organisms. New research considering climate variability suggests mid-latitude vulnerability.
 
 # GENERAL INFORMATION
